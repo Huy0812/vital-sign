@@ -1,0 +1,6 @@
+opencv-python
+numpy
+torchvision
+torchaudio
+mediapipe
+scikit-image

@@ -17,6 +17,9 @@ from luminance import mean_grayscale, is_low_contrast, is_Y_channel
 from roi_selection import bandpass_filter, selection_signal
 from signal_processing import Signal
 from matplotlib.animation import FuncAnimation
+from scipy.signal import find_peaks
+from math import sqrt
+
 
 class CaptureFrames():
 
@@ -29,17 +32,20 @@ class CaptureFrames():
         self.raw_bvp_arr_face = []
         self.frame_arr = []
         self.time = []
+        self.ibi = []
         self.spo2_face = []
+        self.fps = 0
+        self.rmssd = 0
         self.heartrate = 0
         self.mean_previous = None
         self.grabbed = None
 
     def __call__(self):
         # self.pipe = pipe
-        try: 
-            thread1 = threading.Thread(target= self.capture_frames )
-            thread2 = threading.Thread(target = self.mask_process ) 
-            thread3 = threading.Thread(target = self.vital_sign)
+        try:
+            thread1 = threading.Thread(target=self.capture_frames)
+            thread2 = threading.Thread(target=self.mask_process)
+            thread3 = threading.Thread(target=self.vital_sign)
             thread1.start()
             thread2.start()
             thread3.start()
@@ -47,21 +53,20 @@ class CaptureFrames():
             plt.tight_layout()
             plt.show()
 
-        except Exception as e :
+        except Exception as e:
             print(e)
-            
+
     def animate(self, i):
         data = self.raw_bvp_arr_nose
         x_vals = range(len(data))
         y_vals = data
         plt.cla()
 
-        if (len(x_vals) == len(y_vals)) :
+        if (len(x_vals) == len(y_vals)):
             plt.plot(x_vals, y_vals, label='Heart Rate ' + self.heartrate)
             plt.legend(loc='upper left')
             plt.tight_layout()
 
-        
     def capture_frames(self, source=0):
         camera = cv2.VideoCapture(source)
         (self.grabbed, frame) = camera.read()
@@ -69,7 +74,7 @@ class CaptureFrames():
         self.frames_count = 0
 
         while self.grabbed:
-            time.sleep(1/100000)
+            time.sleep(1 / 100000)
             (grabbed, frame) = camera.read()
 
             if not grabbed:
@@ -94,35 +99,36 @@ class CaptureFrames():
 
                 if (not (check_luminance)):
                     continue
-                
+
                 else:
                     self.frame_arr.append(frame)
-                   
+
             self.mean_previous = mean_y_channel
             self.frames_count += 1
-            
+
             if self.frames_count % 30 == 29:
                 time_end = time.time()
-                sys.stdout.write(f'\rFPS: {30 / (time_end - time_begin)}')
+                self.fps = 30 / (time_end - time_begin)
+                sys.stdout.write(f'\rFPS: {self.fps}')
                 sys.stdout.flush()
                 time_begin = time.time()
-        
+
         self.terminate(camera)
 
-    def mask_process(self) :
+    def mask_process(self):
 
-        while (True) :
-            time.sleep(1/100000)
+        while (True):
+            time.sleep(1 / 100000)
 
-            if (len(self.frame_arr) > 600) :
+            if (len(self.frame_arr) > 600):
                 frame = self.frame_arr.pop()
                 self.mask(frame)
                 forehead_roi = np.asarray(self.mask.getForehead_roi(), dtype="uint8")
                 nose_roi = np.asarray(self.mask.getNose_roi(), dtype="uint8")
                 face_roi = np.asarray(self.mask.getFace_roi(), dtype="uint8")
-                frame_ROI = cv2.drawContours(frame, [np.array(self.mask.outline_forehead)], 0, (255,0,0), 2)
-                frame_ROI = cv2.drawContours(frame, [np.array(self.mask.outline_nose)] , 0, (0,255,0), 2)
-                frame_ROI = cv2.drawContours(frame, [np.array(self.mask.outline_face)] , 0, (0,0,255), 2)
+                frame_ROI = cv2.drawContours(frame, [np.array(self.mask.outline_forehead)], 0, (255, 0, 0), 2)
+                frame_ROI = cv2.drawContours(frame, [np.array(self.mask.outline_nose)], 0, (0, 255, 0), 2)
+                frame_ROI = cv2.drawContours(frame, [np.array(self.mask.outline_face)], 0, (0, 0, 255), 2)
                 cv2.imshow('img', frame_ROI)
                 cv2.waitKey(1)
                 # Raw BVP from green channel
@@ -136,16 +142,16 @@ class CaptureFrames():
                 self.spo2_face.append(spo2_face)
                 self.time.append(time.time())
                 print(len(self.spo2_face))
-                #print(self.spo2_forehead)
-            else :
+                # print(self.spo2_forehead)
+            else:
                 pass
-            
-    def vital_sign(self) :
 
-        while(True) :
-            time.sleep(1/100000)
+    def vital_sign(self):
 
-            if len(self.raw_bvp_arr_forehead) % 301 == 300 :
+        while (True):
+            time.sleep(1 / 100000)
+
+            if len(self.raw_bvp_arr_forehead) % 301 == 300:
                 print("hello")
                 real_time = self.time[-1] - self.time[len(self.time) - 300]
                 signal_forehead = Signal()
@@ -155,27 +161,43 @@ class CaptureFrames():
                 signal_nose.signal = self.raw_bvp_arr_nose[-300:]
                 signal_face.signal = self.raw_bvp_arr_face[-300:]
 
+                # HRV calculation
+                peaks_time = []
+                j = y = 0
+                peaks, _ = find_peaks(signal_face, height=0)
+                for peak in peaks:
+                    empty = peak / self.fps
+                    peaks_time.append(empty)
+                for i in range(1, len(peaks_time)):
+                    t = peaks_time[i] - peaks_time[i - 1]
+                    self.ibi.append(t)
+                n = len(self.ibi)
+                while j < n - 1:
+                    x = (self.ibi[j] - self.ibi[j + 1]) ** 2
+                    y += x
+                    j += 1
+                self.rmssd = sqrt(y / (n - 1))
+
                 signal_forehead(real_time)
                 signal_nose(real_time)
                 signal_face(real_time)
-
 
                 power_forehead, freqs_forehead = bandpass_filter(signal_forehead.signal, real_time)
                 power_nose, freqs_nose = bandpass_filter(signal_nose.signal, real_time)
                 power_face, freqs_face = bandpass_filter(signal_face.signal, real_time)
                 power_selection, bpm_selection, max_index = selection_signal(power_forehead, freqs_forehead,
-                                                                                power_nose, freqs_nose, power_face,
-                                                                                freqs_face)
-                self.heartrate = (60*bpm_selection[max_index])
+                                                                             power_nose, freqs_nose, power_face,
+                                                                             freqs_face)
+                self.heartrate = (60 * bpm_selection[max_index])
                 print("heartrate", self.heartrate)
+                print("hrv", self.rmssd * 1000)
                 print("spo2", mean(self.spo2_face))
 
                 with open("data.txt", 'a') as file:
-                    file.write(str(60*bpm_selection[max_index]) + "\n")
-                    
-            else :
-                pass
+                    file.write(str(60 * bpm_selection[max_index]) + "\n")
 
+            else:
+                pass
 
     def terminate(self, camera):
         # self.pipe.send(None)

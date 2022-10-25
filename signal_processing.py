@@ -91,7 +91,6 @@ class Signal():
         D_2 = sp.sparse.dia_matrix((B.T, [0, 1, 2]), shape=(N - 2, N)).toarray()
         inv = np.linalg.inv(identity + regularization ** 2 * D_2.T @ D_2)
         z_stat = (identity - inv) @ self.signal
-        #self.signal = z_stat
         trend = np.squeeze(np.asarray(self.signal - z_stat))
         self.signal = np.array(self.signal) - trend
 

@@ -19,9 +19,10 @@ def selection_signal(fft_forehead, bpm_forehead, fft_nose, bpm_nose, fft_face, b
     max_index_nose = np.argmax(fft_nose)
     max_index_face = np.argmax(fft_face)
     max_psd = max(np.max(fft_forehead), np.max(fft_nose), np.max(fft_face))
-    print(60 * bpm_forehead[max_index_forehead])
-    print(60 * bpm_nose[max_index_nose])
-    print(60 * bpm_face[max_index_face])
+    #max_psd = np.max(fft_nose)
+    #print(60 * bpm_forehead[max_index_forehead])
+    #print(60 * bpm_nose[max_index_nose])
+    #print(60 * bpm_face[max_index_face])
 
     if max_psd == np.max(fft_forehead):
         print("forehead")

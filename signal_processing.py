@@ -43,7 +43,6 @@ class Signal():
             self.signal = result_signal
 
     def SNR(self, time):
-        print("ayyo")
         signal = np.array(self.signal)
         # self.length = len(signal)
         fft = np.fft.fft(signal)
@@ -58,7 +57,7 @@ class Signal():
         sum_signal = (sum(power[max_index:max_index + 4]))
         sum_noise = abs(4 - sum_signal)
         snr = 20 * np.log10(sum_signal / sum_noise)
-        print(snr)
+        #print(snr)
         return snr
 
     def denoise_filter(self, signal, threshold=1):

@@ -13,8 +13,8 @@ class Signal():
         self.signal = []
         self.length = 0
 
-    def __call__(self, time):
-        self.eliminate_motion(time)
+    def __call__(self, fps):
+        self.eliminate_motion(fps)
         self.denoise_filter(self.signal)
         self.normalization()
         #self.ICA()

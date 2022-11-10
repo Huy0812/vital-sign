@@ -19,7 +19,7 @@ from signal_processing import Signal
 from matplotlib.animation import FuncAnimation
 from scipy.signal import find_peaks
 from math import sqrt
-
+import pandas as pd
 
 class CaptureFrames():
 
@@ -197,14 +197,20 @@ class CaptureFrames():
                         print("hrv", self.rmssd * 1000)
                         print("spo2", mean(self.spo2_face))
                     sys.exit()
-            if len(self.raw_bvp_arr_forehead) % 101 == 100:
-                real_time = self.time[-1] - self.time[len(self.time) - 100]
+            if len(self.raw_bvp_arr_forehead) % 501 == 500:
+                #self.raw_bvp_arr_forehead = np.loadtxt("test.txt", comments="#", delimiter=",", unpack=False)
+
+                print(self.raw_bvp_arr_forehead)
+                real_time = self.time[-1] - self.time[len(self.time) - 200]
+                print("******************", real_time)
+                real_time = 200/21
+                print("-----------------------", real_time)
                 signal_forehead = Signal()
                 signal_nose = Signal()
                 signal_face = Signal()
-                signal_forehead.signal = self.raw_bvp_arr_forehead[-100:]
-                signal_nose.signal = self.raw_bvp_arr_nose[-100:]
-                signal_face.signal = self.raw_bvp_arr_face[-100:]
+                signal_forehead.signal = self.raw_bvp_arr_forehead[-200:]
+                signal_nose.signal = self.raw_bvp_arr_nose[-200:]
+                signal_face.signal = self.raw_bvp_arr_face[-200:]
 
                 # HRV calculation
                 peaks_time = []
@@ -233,6 +239,8 @@ class CaptureFrames():
                 power_selection, bpm_selection, max_index = selection_signal(power_forehead, freqs_forehead,
                                                                              power_nose, freqs_nose, power_face,
                                                                              freqs_face)
+                print(bpm_selection)
+                print(len(power_selection))
                 self.heartrate.append(60 * bpm_selection[max_index])
                 #print("heartrate", self.heartrate)
                 

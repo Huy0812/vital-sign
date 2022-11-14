@@ -217,7 +217,7 @@ class CaptureFrames():
                 j = y = 0
                 peaks, _ = find_peaks(signal_face.signal, height=0)
                 for peak in peaks:
-                    empty = peak / self.fps
+                    empty = self.time[peak]
                     peaks_time.append(empty)
                 for i in range(1, len(peaks_time)):
                     t = peaks_time[i] - peaks_time[i - 1]
